@@ -1,0 +1,84 @@
+﻿@page "/fetchdata"
+
+@using Service_Localization_Debugging.Data
+@using Microsoft.Extensions.Localization
+
+@implements IDisposable
+
+@inject Service_Localization_Debugging.Services.WeatherCache Cache
+@inject IStringLocalizer<FetchData> StringLocalizer
+
+@inject NavigationManager NavigationManager
+
+<h3>Select your language</h3>
+
+<select @onchange="OnSelected">
+    <option>Select...</option>
+    <option value="en-US">English</option>
+    <option value="de-DE">German</option>
+</select>
+
+<h1>Weather forecast</h1>
+
+<p>This component demonstrates fetching data from a service.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>@StringLocalizer["Date"]</th>
+                <th>@StringLocalizer["TempC"]</th>
+                <th>@StringLocalizer["TempF"]</th>
+                <th>@StringLocalizer["Summary"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private WeatherForecast[] forecasts;
+
+    protected override void OnInitialized()
+    {
+        forecasts = Cache.Forecast;
+        Cache.ForecastHasChanged += OnForecastChanged;
+    }
+
+    public void Dispose()
+    {
+        Cache.ForecastHasChanged -= OnForecastChanged;
+    }
+
+    public void OnForecastChanged(WeatherForecast[] forecasts)
+    {
+        this.forecasts = forecasts;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSelected(ChangeEventArgs e)
+    {
+        var culture = (string)e.Value;
+        var uri = new Uri(NavigationManager.Uri)
+            .GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+        var query = $"?culture={Uri.EscapeDataString(culture)}&" +
+            $"redirectUri={Uri.EscapeDataString(uri)}";
+
+        NavigationManager.NavigateTo("/Culture/SetCulture" + query, forceLoad: true);
+    }
+}
